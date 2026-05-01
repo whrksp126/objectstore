@@ -20,6 +20,7 @@ deploy.sh 자동화)을 답습한다.
 | `/deploy --restart` | 코드 변경 없을 때도 컨테이너 강제 재기동 |
 | `/status` | 홈서버 컨테이너/헬스/디스크/버킷 한눈에 |
 | `/logs [N \| -f]` | 홈서버 minio 로그 (예: `/logs 200`, `/logs -f`) |
+| `/cmux-dev` | cmux 워크스페이스 ObjectStore 세팅 — 위 Claude / 아래 minio 로그 패널 (멱등, 재실행=재시작) |
 
 ### 흐름 요약
 1. 로컬 변경 → `/local-up` 검증 → http://localhost:9001 에서 Console 확인
