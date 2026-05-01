@@ -1,0 +1,19 @@
+# 홈서버(ghmate) 운영 override.
+# - 가이드 GHMATE_SERVER_GUIDE.md 패턴: 호스트 포트 노출 안 함, nginx_proxy 네트워크 join
+# - 사용: docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.dev up -d
+# - scripts/up.sh dev 가 위 명령을 자동 실행
+
+services:
+  minio:
+    container_name: objectstore_minio_prod
+    ports: !reset []
+    expose:
+      - "9000"
+      - "9001"
+    networks:
+      - objectstore-net
+      - nginx_proxy
+
+networks:
+  nginx_proxy:
+    external: true

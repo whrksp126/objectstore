@@ -1,0 +1,69 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker compose *)",
+      "Bash(docker ps *)",
+      "Bash(docker logs *)",
+      "Bash(docker inspect *)",
+      "Bash(docker exec objectstore_*)",
+      "Bash(docker exec objectstore-*)",
+      "Bash(docker exec nginx_proxy *)",
+      "Bash(docker network inspect *)",
+      "Bash(docker volume inspect *)",
+      "Bash(curl http://localhost:9000/*)",
+      "Bash(curl http://localhost:9001/*)",
+      "Bash(curl -fsSL http://localhost:*)",
+      "Bash(curl -fsSL https://objectstore.ghmate.com/*)",
+      "Bash(curl -fsSL https://objectstore-console.ghmate.com/*)",
+      "Bash(curl -I http://localhost:*)",
+      "Bash(curl -fsI http://localhost:*)",
+      "Bash(bash scripts/up.sh *)",
+      "Bash(bash scripts/down.sh *)",
+      "Bash(bash scripts/status.sh)",
+      "Bash(bash scripts/logs.sh *)",
+      "Bash(bash scripts/deploy.sh)",
+      "Bash(bash scripts/deploy.sh --restart)",
+      "Bash(./scripts/up.sh *)",
+      "Bash(./scripts/down.sh *)",
+      "Bash(./scripts/status.sh)",
+      "Bash(./scripts/logs.sh *)",
+      "Bash(./scripts/deploy.sh)",
+      "Bash(./scripts/deploy.sh --restart)",
+      "Bash(ssh -i */.ssh/ghmate_server -p 222 ghmate@ghmate.iptime.org *)",
+      "Bash(aws --endpoint-url http://localhost:9000 *)",
+      "Bash(aws --endpoint-url https://objectstore.ghmate.com *)",
+      "Bash(mc *)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(git branch*)",
+      "Bash(git rev-parse*)",
+      "Bash(git push origin main)",
+      "Bash(gh repo view*)",
+      "Bash(gh pr *)"
+    ],
+    "deny": [
+      "Bash(git push --force *)",
+      "Bash(git push -f *)",
+      "Bash(rm -rf *)",
+      "Bash(git add .env.local)",
+      "Bash(git add .env.dev)",
+      "Bash(git add .env)",
+      "Read(./.env.local)",
+      "Read(./.env.dev)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'p=\"$CLAUDE_FILE_PATH\"; case \"$p\" in *docker-compose.yml|*docker-compose.prod.yml) (cd \"$(dirname \"$p\")\" && docker compose -f \"$(basename \"$p\")\" config -q 2>&1 || true) ;; *deploy/objectstore.conf) docker run --rm -v \"$(dirname \"$p\")\":/conf nginx:1.27-alpine sh -c \"cp /conf/objectstore.conf /etc/nginx/conf.d/objectstore.conf && nginx -t\" 2>&1 ;; *) exit 0 ;; esac'"
+          }
+        ]
+      }
+    ]
+  }
+}
