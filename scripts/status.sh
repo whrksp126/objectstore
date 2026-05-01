@@ -12,10 +12,11 @@ docker ps --filter "name=objectstore_" --format 'table {{.Names}}\t{{.Status}}\t
 
 echo ""
 echo "=== 헬스 ==="
+# MINIO_SERVER_URL이 설정된 컨테이너는 Host 헤더가 일치해야 함
 echo -n "  minio API     "
-docker exec objectstore_minio_prod curl -fs http://localhost:9000/minio/health/live >/dev/null 2>&1 && echo OK || echo FAIL
-echo -n "  minio cluster "
-docker exec objectstore_minio_prod curl -fs http://localhost:9000/minio/health/cluster >/dev/null 2>&1 && echo OK || echo FAIL
+docker exec objectstore_minio_prod curl -fs -H "Host: objectstore.ghmate.com" http://localhost:9000/minio/health/live >/dev/null 2>&1 && echo OK || echo FAIL
+echo -n "  minio ready   "
+docker exec objectstore_minio_prod curl -fs -H "Host: objectstore.ghmate.com" http://localhost:9000/minio/health/ready >/dev/null 2>&1 && echo OK || echo FAIL
 
 echo ""
 echo "=== 데이터 디스크 사용량 ==="

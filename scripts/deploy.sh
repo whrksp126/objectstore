@@ -72,15 +72,17 @@ fi
 REMOTE
 
 # ---------- 4) 헬스체크 ----------
+# 주의: MINIO_SERVER_URL/MINIO_BROWSER_REDIRECT_URL이 설정된 컨테이너는
+# Host 헤더가 그 도메인과 일치하지 않으면 400을 반환한다. 그래서 호출 시 Host 헤더를 명시한다.
 echo "[deploy] 4/5 헬스체크"
 ${SSH} bash -se <<'REMOTE'
 set -e
 echo -n "  minio API     "
-docker exec objectstore_minio_prod curl -fs http://localhost:9000/minio/health/live >/dev/null 2>&1 && echo OK || { echo FAIL; exit 1; }
+docker exec objectstore_minio_prod curl -fs -H "Host: objectstore.ghmate.com" http://localhost:9000/minio/health/live >/dev/null 2>&1 && echo OK || { echo FAIL; exit 1; }
+echo -n "  minio ready   "
+docker exec objectstore_minio_prod curl -fs -H "Host: objectstore.ghmate.com" http://localhost:9000/minio/health/ready >/dev/null 2>&1 && echo OK || { echo FAIL; exit 1; }
 echo -n "  minio Console "
-docker exec objectstore_minio_prod curl -fsI http://localhost:9001/ >/dev/null 2>&1 && echo OK || { echo FAIL; exit 1; }
-echo -n "  minio cluster "
-docker exec objectstore_minio_prod curl -fs http://localhost:9000/minio/health/cluster >/dev/null 2>&1 && echo OK || echo "(no quorum yet)"
+docker exec objectstore_minio_prod curl -fsI -H "Host: objectstore-console.ghmate.com" http://localhost:9001/ >/dev/null 2>&1 && echo OK || { echo FAIL; exit 1; }
 REMOTE
 
 # ---------- 5) 외부 도메인 검증 ----------
