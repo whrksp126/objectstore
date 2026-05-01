@@ -124,6 +124,87 @@ docker exec nginx_proxy nginx -t && docker restart nginx_proxy
 
 ---
 
+## 다른 프로젝트에서 사용하기
+
+heyvoca / openday / orderandgo 등 같은 사용자의 다른 프로젝트가 이 objectstore를
+S3처럼 사용하는 절차. 사용자뿐 아니라 **각 프로젝트의 Claude Code AI도** 동일 컨벤션을
+따른다 (글로벌 skill `~/.claude/skills/objectstore/SKILL.md`로 자동 인지됨).
+
+### 1) 사용자가 한 번만 (Console 작업)
+
+브라우저로 https://objectstore-console.ghmate.com 로그인 후:
+
+1. **버킷 생성** — 명명 컨벤션 `<project>-<env>` (예: `heyvoca-prod`, `heyvoca-dev`).
+2. **Access Key 발급** — `Access Keys → Create access key`.
+   - 가능하면 **해당 버킷에만** read/write 권한 주는 policy를 첨부해서 사고 격리.
+3. 발급된 `accessKeyId` / `secretAccessKey`를 프로젝트의 `.env` 또는 secret 매니저에 저장.
+
+### 2) 환경변수 컨벤션 (각 프로젝트의 `.env`)
+
+```env
+OBJECTSTORE_ENDPOINT=https://objectstore.ghmate.com
+OBJECTSTORE_ACCESS_KEY=<bucket-scoped-key>
+OBJECTSTORE_SECRET_KEY=<bucket-scoped-secret>
+OBJECTSTORE_BUCKET=<project>-<env>
+```
+
+### 3) 코드 예시
+
+#### Node.js (`@aws-sdk/client-s3` v3)
+
+```js
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+
+const s3 = new S3Client({
+  endpoint: process.env.OBJECTSTORE_ENDPOINT,
+  region: 'us-east-1',                   // 아무 값. 비어있으면 SDK가 reject.
+  credentials: {
+    accessKeyId: process.env.OBJECTSTORE_ACCESS_KEY,
+    secretAccessKey: process.env.OBJECTSTORE_SECRET_KEY,
+  },
+  forcePathStyle: true,                  // 필수
+});
+
+await s3.send(new PutObjectCommand({
+  Bucket: process.env.OBJECTSTORE_BUCKET,
+  Key: 'avatars/u123.png',
+  Body: buffer,
+  ContentType: 'image/png',
+}));
+```
+
+#### Python (`boto3`)
+
+```py
+import os, boto3
+from botocore.config import Config
+
+s3 = boto3.client(
+    's3',
+    endpoint_url=os.environ['OBJECTSTORE_ENDPOINT'],
+    aws_access_key_id=os.environ['OBJECTSTORE_ACCESS_KEY'],
+    aws_secret_access_key=os.environ['OBJECTSTORE_SECRET_KEY'],
+    region_name='us-east-1',
+    config=Config(s3={'addressing_style': 'path'}),
+)
+
+s3.put_object(Bucket=os.environ['OBJECTSTORE_BUCKET'], Key='exports/x.csv', Body=data)
+```
+
+### 4) 트러블슈팅
+
+| 증상 | 원인 |
+|---|---|
+| `400 BadRequest` 모든 요청 | `forcePathStyle: true` / `addressing_style: 'path'` 빠짐 |
+| `403 SignatureDoesNotMatch` | secret key 오타 또는 region 빈 문자열 |
+| `403 InvalidAccessKeyId` | Console에서 비활성화됐거나 만료 |
+| `NoSuchBucket` | 버킷 미생성 또는 이름 오타 |
+| 100MB 이상 업로드 실패 | SDK의 멀티파트 업로드(`Upload`/`upload_file`) 사용 |
+
+서비스 자체가 죽은 것 같으면: `bash scripts/status.sh` 또는 `curl https://objectstore.ghmate.com/minio/health/live` (200이어야 정상).
+
+---
+
 ## 운영 메모
 
 - **Root key는 Console 관리용**. 애플리케이션 SDK 호출은 Console에서 `Identity → Service Accounts` 또는 `Users → Access Keys`로 별도 키를 발급해 사용.
