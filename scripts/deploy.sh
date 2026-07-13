@@ -62,12 +62,19 @@ else
 fi
 
 # nginx conf 변경 감지
+# ⚠️ 공용 nginx_proxy 는 절대 restart 하지 않는다(다른 프로젝트 conf 가 하나라도 깨져 있으면
+#    시작 시 config 검사에 걸려 nginx 자체가 안 떠 전 서비스 다운). 항상 nginx -t 통과 시에만 reload.
 if ! diff -q deploy/objectstore.conf /srv/nginx-proxy/conf.d/objectstore.conf >/dev/null 2>&1; then
   echo "  nginx conf 갱신..."
   cp deploy/objectstore.conf /srv/nginx-proxy/conf.d/objectstore.conf
-  docker exec nginx_proxy nginx -t >/dev/null 2>&1
-  docker restart nginx_proxy >/dev/null
-  echo "  ✓ nginx restart"
+  if docker exec nginx_proxy nginx -t >/dev/null 2>&1; then
+    docker exec nginx_proxy nginx -s reload >/dev/null
+    echo "  ✓ nginx reload"
+  else
+    echo "  ✗ nginx -t 실패 — reload 중단. 원인 conf 확인:"
+    docker exec nginx_proxy nginx -t 2>&1 | sed 's/^/    /'
+    exit 1
+  fi
 fi
 REMOTE
 

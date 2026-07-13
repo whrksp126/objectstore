@@ -13,6 +13,12 @@ services:
     networks:
       - objectstore-net
       - nginx_proxy
+    # 공용 홈서버(13GB/8코어) — 한 프로젝트가 전체를 잡아먹지 않게 상한. 초과 시 옆 프로젝트 OOM 방지.
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+          cpus: "2.0"
 
 networks:
   nginx_proxy:
