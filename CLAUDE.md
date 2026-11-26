@@ -30,10 +30,10 @@ deploy.sh 자동화)을 답습한다.
 
 ### 최초 1회 (이미 완료됐다면 스킵)
 - 홈서버에 `/srv/projects/objectstore/` clone, `.env.dev` 작성 (chmod 600)
-- `/srv/nginx-proxy/conf.d/objectstore.conf` 배치, nginx_proxy 재시작
+- `/srv/nginx-proxy/conf.d/objectstore.conf` 배치 → `docker exec nginx_proxy nginx -t` 통과 후 `nginx -s reload` (nginx_proxy restart 금지)
 - Cloudflare DNS CNAME 두 개:
-  - `objectstore` → `ghmate.iptime.org` (Proxy ON)
-  - `objectstore-console` → `ghmate.iptime.org` (Proxy ON)
+  - `objectstore` → `ghmate.iptime.org` (DNS only ⚪, 직통)
+  - `objectstore-console` → `ghmate.iptime.org` (DNS only ⚪, 직통)
 
 ## 절대 규칙
 
@@ -74,13 +74,13 @@ deploy.sh 자동화)을 답습한다.
 
 - API (S3 SDK endpoint): `https://objectstore.ghmate.com`
 - Console (Web UI): `https://objectstore-console.ghmate.com`
-- 흐름: Cloudflare(Proxy) → iptime DDNS(`ghmate.iptime.org`) → 홈서버 `nginx_proxy` → MinIO 컨테이너
+- 흐름: Cloudflare(DNS only, 직통) → iptime DDNS(`ghmate.iptime.org`) → 홈서버 `nginx_proxy` → MinIO 컨테이너
 - 다른 기존 서비스(`serverstate`, `heyvoca-back`, `dev-openday` 등)와 동일 패턴
 
 ## 절대 하지 말 것
 
 - 운영 환경에서 root password를 약하게 (8자 미만이면 컨테이너가 즉시 crash)
-- 큰 파일 업로드 시 단일 PUT 사용 (Cloudflare 무료 플랜 100MB 제한) — SDK 멀티파트 사용
+- 큰 파일을 단일 PUT으로 업로드 (직통이라 상한은 nginx `client_max_body_size 5G`지만, 중단 시 재시도·속도 면에서 불리) — SDK 멀티파트 사용
 - nginx conf의 `proxy_buffering off` / `client_max_body_size 5G` 제거 (대용량 업로드 깨짐)
 - root key를 애플리케이션 코드에 박아넣기 — Console에서 access key 발급해서 쓸 것
 - 기존 서비스가 쓰는 호스트 포트와 겹치는 매핑

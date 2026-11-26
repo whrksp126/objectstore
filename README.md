@@ -109,8 +109,8 @@ docker exec nginx_proxy nginx -t && docker restart nginx_proxy
 
 | Type | Name | Target | Proxy |
 |---|---|---|---|
-| CNAME | `objectstore` | `ghmate.iptime.org` | ON |
-| CNAME | `objectstore-console` | `ghmate.iptime.org` | ON |
+| CNAME | `objectstore` | `ghmate.iptime.org` | OFF (DNS only ⚪) |
+| CNAME | `objectstore-console` | `ghmate.iptime.org` | OFF (DNS only ⚪) |
 
 ### 반복 배포
 
@@ -199,7 +199,7 @@ s3.put_object(Bucket=os.environ['OBJECTSTORE_BUCKET'], Key='exports/x.csv', Body
 | `403 SignatureDoesNotMatch` | secret key 오타 또는 region 빈 문자열 |
 | `403 InvalidAccessKeyId` | Console에서 비활성화됐거나 만료 |
 | `NoSuchBucket` | 버킷 미생성 또는 이름 오타 |
-| 100MB 이상 업로드 실패 | SDK의 멀티파트 업로드(`Upload`/`upload_file`) 사용 |
+| 5GB 초과 단일 PUT 실패 / 대용량 업로드 중단 | SDK의 멀티파트 업로드(`Upload`/`upload_file`) 사용 |
 
 서비스 자체가 죽은 것 같으면: `bash scripts/status.sh` 또는 `curl https://objectstore.ghmate.com/minio/health/live` (200이어야 정상).
 
@@ -209,7 +209,7 @@ s3.put_object(Bucket=os.environ['OBJECTSTORE_BUCKET'], Key='exports/x.csv', Body
 
 - **Root key는 Console 관리용**. 애플리케이션 SDK 호출은 Console에서 `Identity → Service Accounts` 또는 `Users → Access Keys`로 별도 키를 발급해 사용.
 - **Path-style URL 권장**: SDK에 `forcePathStyle: true` (boto3는 자동, aws-sdk-js는 명시 필요).
-- **대용량 업로드**: SDK의 멀티파트 업로드 사용. 단일 PUT은 Cloudflare 무료 플랜의 100MB 제한에 걸릴 수 있음.
+- **대용량 업로드**: SDK의 멀티파트 업로드 사용. 단일 PUT 상한은 nginx `client_max_body_size 5G` (Cloudflare 직통이라 100MB 제한 없음). 대용량은 멀티파트가 재시도·병렬에 유리.
 - **데이터 위치**: named volume `objectstore_minio_data` → `/var/lib/docker/volumes/objectstore_minio_data/_data` (서버).
 
 ---
@@ -217,5 +217,5 @@ s3.put_object(Bucket=os.environ['OBJECTSTORE_BUCKET'], Key='exports/x.csv', Body
 ## 외부 도메인
 
 - 진입점: `https://objectstore.ghmate.com` (API), `https://objectstore-console.ghmate.com` (Console)
-- 흐름: Cloudflare(Proxy) → iptime DDNS(`ghmate.iptime.org`) → 홈서버 nginx_proxy → MinIO 컨테이너
+- 흐름: Cloudflare(DNS only, 직통) → iptime DDNS(`ghmate.iptime.org`) → 홈서버 nginx_proxy → MinIO 컨테이너
 - 같은 홈서버의 다른 서비스(`serverstate`, `heyvoca-back`, `dev-openday` 등)와 동일 패턴
